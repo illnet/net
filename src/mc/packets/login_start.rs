@@ -33,14 +33,6 @@ impl<'a> LoginStartC2s<'a> {
         let mut profile_id = None;
         let mut sig_data = None;
 
-        if input.is_empty() {
-            return Ok(Self {
-                username,
-                profile_id,
-                sig_data,
-            });
-        }
-
         if protocol_version >= LOGIN_START_UUID_PROTOCOL {
             if input.len() < 16 {
                 return Err(ProtoError::UnexpectedEof);
@@ -81,7 +73,6 @@ impl<'a> LoginStartC2s<'a> {
                 });
             }
         }
-        *input = &[];
 
         Ok(Self {
             username,

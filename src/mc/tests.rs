@@ -3,6 +3,7 @@ use super::{
         HandshakeC2s, LoginDisconnectS2c, LoginStartC2s, LoginStartSigData, ServerboundPacket,
         StatusPingC2s,
     },
+    ProtoError,
     state::{HandshakeNextState, PacketState},
     types::{PacketDecoder, PacketEncode, PacketEncoder, Uuid},
     varint::{read_varint, write_varint},
@@ -129,6 +130,44 @@ fn login_start_roundtrip_with_uuid() {
         ServerboundPacket::LoginStart(actual) => assert_eq!(actual, packet),
         _ => panic!("unexpected packet"),
     }
+}
+
+#[test]
+fn login_start_with_uuid_leaves_trailing_bytes_for_caller() {
+    let uuid = Uuid::from_u64s(0x0102_0304_0506_0708, 0x090a_0b0c_0d0e_0f10);
+    let mut body = Vec::new();
+    write_test_string(&mut body, "player");
+    body.extend_from_slice(uuid.as_bytes());
+    body.push(0x88);
+
+    let mut input = body.as_slice();
+    let decoded =
+        LoginStartC2s::decode_body_with_version(&mut input, PROTOCOL_VERSION_WITH_UUID).unwrap();
+
+    assert_eq!(decoded.username, "player");
+    assert_eq!(decoded.profile_id, Some(uuid));
+    assert_eq!(input, &[0x88]);
+}
+
+#[test]
+fn login_start_packet_rejects_trailing_bytes() {
+    let uuid = Uuid::from_u64s(0x0102_0304_0506_0708, 0x090a_0b0c_0d0e_0f10);
+    let mut body = Vec::new();
+    write_test_string(&mut body, "player");
+    body.extend_from_slice(uuid.as_bytes());
+    body.push(0x88);
+
+    let mut raw = Vec::new();
+    super::types::encode_raw_packet(&mut raw, LoginStartC2s::ID, &body).unwrap();
+
+    let mut dec = PacketDecoder::new();
+    dec.queue_slice(&raw);
+    let frame = dec.try_next_packet().unwrap().unwrap();
+    let err = frame
+        .decode_serverbound(PacketState::Login, PROTOCOL_VERSION_WITH_UUID)
+        .unwrap_err();
+
+    assert!(matches!(err, ProtoError::TrailingBytes(1)));
 }
 
 #[test]
