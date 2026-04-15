@@ -1,9 +1,9 @@
 use super::{
+    ProtoError,
     packets::{
         HandshakeC2s, LoginDisconnectS2c, LoginStartC2s, LoginStartSigData, ServerboundPacket,
         StatusPingC2s,
     },
-    ProtoError,
     state::{HandshakeNextState, PacketState},
     types::{PacketDecoder, PacketEncode, PacketEncoder, Uuid},
     varint::{read_varint, write_varint},

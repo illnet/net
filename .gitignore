@@ -1,0 +1,5 @@
+/target
+/Cargo.lock
+/compat/.venv
+__pycache__/
+*.py[cod]
