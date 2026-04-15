@@ -21,7 +21,7 @@ const DEFAULT_PIN_DIR: &str = "/sys/fs/bpf/lure";
 const DEFAULT_MAP_NAME: &str = "lure_sockhash";
 const DEFAULT_PROG_NAME: &str = "lure_msg_verdict";
 const LEGACY_MAP_NAME: &str = "sockhash";
-const KERNEL_OBJ: &[u8] = include_bytes!(env!("LURE_EBPF_OBJ"));
+const KERNEL_OBJ: &[u8] = include_bytes!(env!("MACH_EBPF_OBJ"));
 
 #[repr(C)]
 struct BpfAttrObj {
@@ -45,7 +45,7 @@ struct Endpoint {
 
 impl Endpoint {
     fn from_env() -> io::Result<Self> {
-        if let Some(path) = std::env::var("LURE_EBPF_SOCKHASH")
+        if let Some(path) = std::env::var("MACH_EBPF_SOCKHASH")
             .ok()
             .or_else(|| std::env::var("NET_EBPF_SOCKHASH").ok())
         {
@@ -165,7 +165,7 @@ pub struct EbpfDone {
 
 #[must_use]
 pub fn ebpf_enabled() -> bool {
-    std::env::var("LURE_IO_EBPF")
+    std::env::var("MACH_IO_EBPF")
         .ok()
         .or_else(|| std::env::var("NET_IO_EBPF").ok())
         .is_some_and(|value| value == "1")
@@ -187,7 +187,7 @@ pub fn spawn_pair_observed(
     if !ebpf_enabled() {
         return Err(io::Error::new(
             io::ErrorKind::Unsupported,
-            "eBPF offload is disabled (set LURE_IO_EBPF=1)",
+            "eBPF offload is disabled (set MACH_IO_EBPF=1)",
         ));
     }
 

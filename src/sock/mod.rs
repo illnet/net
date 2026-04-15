@@ -347,41 +347,41 @@ pub fn backend_kind() -> BackendKind {
 }
 
 pub fn backend_selection() -> &'static BackendSelection {
-    let override_env = std::env::var("LURE_IO_EPOLL")
+    let override_env = std::env::var("MACH_IO_EPOLL")
         .ok()
         .or_else(|| std::env::var("NET_IO_EPOLL").ok());
-    let uring_override = std::env::var("LURE_IO_URING")
+    let uring_override = std::env::var("MACH_IO_URING")
         .ok()
         .or_else(|| std::env::var("NET_IO_URING").ok());
     BACKEND_SELECTION.get_or_init(|| match override_env.as_deref() {
         Some("0") => BackendSelection {
             kind: BackendKind::Tokio,
-            reason: "LURE_IO_EPOLL=0 (forced tokio)".to_string(),
+            reason: "MACH_IO_EPOLL=0 (forced tokio)".to_string(),
         },
         Some("1") => match epoll::probe() {
             Ok(()) => BackendSelection {
                 kind: BackendKind::Epoll,
-                reason: "LURE_IO_EPOLL=1 and epoll available".to_string(),
+                reason: "MACH_IO_EPOLL=1 and epoll available".to_string(),
             },
             Err(err) => BackendSelection {
                 kind: BackendKind::Tokio,
-                reason: format!("LURE_IO_EPOLL=1 but {err}"),
+                reason: format!("MACH_IO_EPOLL=1 but {err}"),
             },
         },
         _ => match uring_override.as_deref() {
             Some("1") => match uring::probe() {
                 Ok(()) => BackendSelection {
                     kind: BackendKind::Uring,
-                    reason: "LURE_IO_URING=1 (explicit) and io_uring available".to_string(),
+                    reason: "MACH_IO_URING=1 (explicit) and io_uring available".to_string(),
                 },
                 Err(err) => BackendSelection {
                     kind: BackendKind::Tokio,
-                    reason: format!("LURE_IO_URING=1 but {err}"),
+                    reason: format!("MACH_IO_URING=1 but {err}"),
                 },
             },
             Some("0") => BackendSelection {
                 kind: BackendKind::Tokio,
-                reason: "LURE_IO_URING=0 (forced tokio)".to_string(),
+                reason: "MACH_IO_URING=0 (forced tokio)".to_string(),
             },
             _ => BackendSelection {
                 kind: BackendKind::Tokio,
@@ -799,9 +799,9 @@ pub fn duplicate_fd(fd: i32) -> io::Result<i32> {
 /// exposes a unified API for accepting and connecting to TCP sockets.
 ///
 /// Backend selection is controlled by environment variables:
-/// - `LURE_IO_EPOLL=1` — use the epoll backend (Linux only)
-/// - `LURE_IO_URING=1` — use io_uring (Linux, compile with feature `uring`)
-/// - `LURE_IO_EPOLL=0` or neither — default Tokio backend
+/// - `MACH_IO_EPOLL=1` — use the epoll backend (Linux only)
+/// - `MACH_IO_URING=1` — use io_uring (Linux, compile with feature `uring`)
+/// - `MACH_IO_EPOLL=0` or neither — default Tokio backend
 pub struct LureNet {
     backend: BackendKind,
 }

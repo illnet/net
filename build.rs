@@ -55,7 +55,7 @@ fn build_ebpf_object() -> Result<(), Box<dyn std::error::Error>> {
         return Err(format!("clang failed building {:?}", out_obj).into());
     }
 
-    println!("cargo:rustc-env=LURE_EBPF_OBJ={}", out_obj.display());
-    println!("cargo:rustc-env=LURE_EBPF_ARCH={}", arch);
+    println!("cargo:rustc-env=MACH_EBPF_OBJ={}", out_obj.display());
+    println!("cargo:rustc-env=MACH_EBPF_ARCH={}", arch);
     Ok(())
 }
