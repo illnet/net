@@ -199,7 +199,7 @@ impl MinecraftStreamParser {
                 next_state,
                 ..
             })) => Transition::Handshake {
-                protocol_version: *protocol_version,
+                protocol_version: protocol_version.0,
                 next_state: *next_state,
             },
             ParsedPacket::Serverbound(ServerboundPacket::LoginStart(LoginStartC2s { .. })) => {
@@ -210,12 +210,12 @@ impl MinecraftStreamParser {
             }
             ParsedPacket::Clientbound(ClientboundPacket::EncryptionRequest(request)) => {
                 Transition::EncryptionRequest {
-                    should_authenticate: request.should_authenticate,
+                    should_authenticate: request.should_authenticate.map(|b| b.0),
                 }
             }
             ParsedPacket::Clientbound(ClientboundPacket::SetCompression(packet)) => {
                 Transition::SetCompression {
-                    threshold: packet.threshold,
+                    threshold: *packet.threshold,
                 }
             }
             ParsedPacket::Clientbound(ClientboundPacket::LoginSuccess(_)) => {

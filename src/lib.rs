@@ -8,3 +8,5 @@
 pub mod ha;
 pub mod mc;
 pub mod sock;
+
+pub use derive_packet::VersionedPacket;

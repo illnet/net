@@ -1,8 +1,9 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use net::mc::{
-    HandshakeC2s, HandshakeNextState, LoginDisconnectS2c, LoginStartC2s, PacketDecoder,
-    PacketEncode, PacketFrame, PacketState, ProtoError, Result as McResult, StatusPingC2s,
-    StatusPongS2c, StatusRequestC2s, StatusResponseS2c, Uuid, encode_packet,
+    BEi64, BEu16, BoundedStr, HandshakeC2s, HandshakeNextState, LoginDisconnectS2c, LoginStartC2s,
+    PacketDecode, PacketDecoder, PacketEncode, PacketFrame, PacketState, ProtoError,
+    Result as McResult, StatusPingC2s, StatusPongS2c, StatusRequestC2s, StatusResponseS2c, Uuid,
+    VarInt, encode_packet,
 };
 
 const L7_TRUNCATE_LEN: usize = 16;
@@ -126,9 +127,9 @@ fn packet_entries() -> Vec<PacketEntry<'static>> {
     vec![
         PacketEntry {
             packet: PacketRef::Handshake(HandshakeC2s {
-                protocol_version: PROTOCOL_VERSION,
-                server_address: "localhost",
-                server_port: 25565,
+                protocol_version: VarInt(PROTOCOL_VERSION),
+                server_address: BoundedStr("localhost"),
+                server_port: BEu16(25565),
                 next_state: HandshakeNextState::Login,
             }),
             decode: decode_handshake,
@@ -138,20 +139,20 @@ fn packet_entries() -> Vec<PacketEntry<'static>> {
             decode: decode_status_request,
         },
         PacketEntry {
-            packet: PacketRef::StatusPing(StatusPingC2s { payload: 1_234_567 }),
+            packet: PacketRef::StatusPing(StatusPingC2s { payload: BEi64(1_234_567) }),
             decode: decode_status_ping,
         },
         PacketEntry {
-            packet: PacketRef::StatusResponse(StatusResponseS2c { json: STATUS_JSON }),
+            packet: PacketRef::StatusResponse(StatusResponseS2c { json: net::mc::BoundedStr(STATUS_JSON) }),
             decode: decode_status_response,
         },
         PacketEntry {
-            packet: PacketRef::StatusPong(StatusPongS2c { payload: 1_234_567 }),
+            packet: PacketRef::StatusPong(StatusPongS2c { payload: BEi64(1_234_567) }),
             decode: decode_status_pong,
         },
         PacketEntry {
             packet: PacketRef::LoginDisconnect(LoginDisconnectS2c {
-                reason: LOGIN_REASON,
+                reason: BoundedStr(LOGIN_REASON),
             }),
             decode: decode_login_disconnect,
         },
@@ -184,7 +185,7 @@ fn upper_pair_entries() -> Vec<PacketEntry<'static>> {
         },
         PacketEntry {
             packet: PacketRef::LoginDisconnect(LoginDisconnectS2c {
-                reason: LOGIN_REASON,
+                reason: BoundedStr(LOGIN_REASON),
             }),
             decode: decode_login_disconnect,
         },

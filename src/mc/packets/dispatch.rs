@@ -1,41 +1,24 @@
-mod encryption_request;
-mod encryption_response;
-mod handshake;
-mod join_game;
-mod login_disconnect;
-mod login_start;
-mod login_success;
-mod player_position;
-mod respawn;
-mod set_compression;
-mod status_ping;
-mod status_pong;
-mod status_request;
-mod status_response;
-mod transfer_config;
-
-pub use encryption_request::EncryptionRequestS2c;
-pub use encryption_response::EncryptionResponseC2s;
-pub use handshake::HandshakeC2s;
-pub use join_game::JoinGameS2c;
-pub use login_disconnect::LoginDisconnectS2c;
-pub use login_start::{LoginStartC2s, LoginStartSigData};
-pub use login_success::LoginSuccessS2c;
-pub use player_position::PlayerPositionS2c;
-pub use respawn::RespawnS2c;
-pub use set_compression::SetCompressionS2c;
-pub use status_ping::StatusPingC2s;
-pub use status_pong::StatusPongS2c;
-pub use status_request::StatusRequestC2s;
-pub use status_response::StatusResponseS2c;
-pub use transfer_config::TransferConfigS2c;
-
-use super::{
+use crate::mc::{
     error::{ProtoError, Result, debug_log_error},
     io::take,
     state::{PacketDirection, PacketState},
-    types::PacketFrame,
+    types::{PacketDecode, PacketFrame},
     varint::read_varint,
+};
+
+use super::handshaking::handshake::HandshakeC2s;
+use super::login::{
+    disconnect::LoginDisconnectS2c, encryption_request::EncryptionRequestS2c,
+    encryption_response::EncryptionResponseC2s, set_compression::SetCompressionS2c,
+    start::LoginStartC2s, success::LoginSuccessS2c,
+};
+use super::play::{
+    login::JoinGameS2c, respawn::RespawnS2c,
+    synchronize_player_position::PlayerPositionS2c,
+};
+use super::status::{
+    ping::StatusPingC2s, pong::StatusPongS2c, request::StatusRequestC2s,
+    response::StatusResponseS2c,
 };
 
 /// Packet kind labels stable enough for WAF rules.

@@ -65,9 +65,9 @@ fn main() -> net::mc::Result<()> {
     let mut hook = PrintHook;
 
     let handshake = HandshakeC2s {
-        protocol_version: PROTOCOL_VERSION,
-        server_address: "example.test",
-        server_port: 25565,
+        protocol_version: net::mc::VarInt(PROTOCOL_VERSION),
+        server_address: net::mc::BoundedStr("example.test"),
+        server_port: net::mc::BEu16(25565),
         next_state: HandshakeNextState::Login,
     };
     let mut raw = Vec::new();

@@ -38,15 +38,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let request_frame = read_frame(&mut stream, &mut decoder)?;
-    match request_frame.decode_serverbound(PacketState::Status, protocol_version)? {
+    match request_frame.decode_serverbound(PacketState::Status, *protocol_version)? {
         ServerboundPacket::StatusRequest(_) => {}
         other => return Err(format!("expected status request, got {other:?}").into()),
     }
 
-    write_packet(&mut stream, &StatusResponseS2c { json: STATUS_JSON })?;
+    write_packet(&mut stream, &StatusResponseS2c { json: net::mc::BoundedStr(STATUS_JSON) })?;
 
     let ping_frame = read_frame(&mut stream, &mut decoder)?;
-    let payload = match ping_frame.decode_serverbound(PacketState::Status, protocol_version)? {
+    let payload = match ping_frame.decode_serverbound(PacketState::Status, *protocol_version)? {
         ServerboundPacket::StatusPing(packet) => packet.payload,
         other => return Err(format!("expected status ping, got {other:?}").into()),
     };

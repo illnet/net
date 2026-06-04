@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::ops::Deref;
 
 use super::{
     error::{ProtoError, Result, debug_log_error},
@@ -7,6 +8,304 @@ use super::{
 
 /// Maximum packet length in bytes (protocol limit).
 pub const MAX_PACKET_SIZE: usize = 2_097_152;
+
+/// Trait for reading a field from the wire protocol during packet decoding.
+/// Implemented for basic protocol types used as packet fields.
+pub trait FieldRead<'a>: Sized {
+    fn read_field(input: &mut &'a [u8]) -> Result<Self>;
+}
+
+/// Trait for writing a field to the wire protocol during packet encoding.
+pub trait FieldWrite {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()>;
+}
+
+// ---------------------------------------------------------------------------
+// Wrapper types that describe their wire encoding
+// ---------------------------------------------------------------------------
+
+/// VarInt-encoded i32.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct VarInt(pub i32);
+
+impl Deref for VarInt {
+    type Target = i32;
+
+    fn deref(&self) -> &i32 {
+        &self.0
+    }
+}
+
+/// Big-endian i32.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct BEi32(pub i32);
+
+/// Big-endian i64.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct BEi64(pub i64);
+
+/// Big-endian u64.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct BEu64(pub u64);
+
+/// Big-endian u16.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct BEu16(pub u16);
+
+/// Boolean encoded as 0 or 1.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Bool(pub bool);
+
+/// VarInt-length-prefixed byte slice (borrowed).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ByteSlice<'a>(pub &'a [u8]);
+
+/// VarInt-length-prefixed UTF-8 string with a compile-time max character bound.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoundedStr<'a, const MAX_CHARS: usize>(pub &'a str);
+
+impl<'a, const MAX_CHARS: usize> FieldRead<'a> for BoundedStr<'a, MAX_CHARS> {
+    fn read_field(input: &mut &'a [u8]) -> Result<Self> {
+        super::io::read_string_bounded(input, MAX_CHARS).map(Self)
+    }
+}
+
+impl<const MAX_CHARS: usize> FieldWrite for BoundedStr<'_, MAX_CHARS> {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        super::io::write_string_bounded(out, self.0, MAX_CHARS)
+    }
+}
+
+impl<'a> FieldRead<'a> for ByteSlice<'a> {
+    fn read_field(input: &mut &'a [u8]) -> Result<Self> {
+        super::packets::read_byte_array(input).map(Self)
+    }
+}
+
+impl FieldWrite for ByteSlice<'_> {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        let len_i32 = i32::try_from(self.0.len()).map_err(|_| ProtoError::LengthTooLarge {
+            max: i32::MAX as usize,
+            actual: self.0.len(),
+        })?;
+        super::varint::write_varint(out, len_i32);
+        out.extend_from_slice(self.0);
+        Ok(())
+    }
+}
+
+impl FieldRead<'_> for VarInt {
+    fn read_field(input: &mut &[u8]) -> Result<Self> {
+        super::varint::read_varint(input).map(VarInt)
+    }
+}
+
+impl FieldWrite for VarInt {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        super::varint::write_varint(out, self.0);
+        Ok(())
+    }
+}
+
+impl FieldRead<'_> for BEi32 {
+    fn read_field(input: &mut &[u8]) -> Result<Self> {
+        super::io::read_i32_be(input).map(BEi32)
+    }
+}
+
+impl FieldWrite for BEi32 {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        super::io::write_i32_be(out, self.0);
+        Ok(())
+    }
+}
+
+impl FieldRead<'_> for BEi64 {
+    fn read_field(input: &mut &[u8]) -> Result<Self> {
+        super::io::read_i64_be(input).map(BEi64)
+    }
+}
+
+impl FieldWrite for BEi64 {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        super::io::write_i64_be(out, self.0);
+        Ok(())
+    }
+}
+
+impl FieldRead<'_> for BEu64 {
+    fn read_field(input: &mut &[u8]) -> Result<Self> {
+        super::io::read_u64_be(input).map(BEu64)
+    }
+}
+
+impl FieldWrite for BEu64 {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        super::io::write_u64_be(out, self.0);
+        Ok(())
+    }
+}
+
+impl FieldRead<'_> for BEu16 {
+    fn read_field(input: &mut &[u8]) -> Result<Self> {
+        super::io::read_u16_be(input).map(BEu16)
+    }
+}
+
+impl FieldWrite for BEu16 {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        super::io::write_u16_be(out, self.0);
+        Ok(())
+    }
+}
+
+impl FieldRead<'_> for Bool {
+    fn read_field(input: &mut &[u8]) -> Result<Self> {
+        super::io::read_bool(input).map(Bool)
+    }
+}
+
+impl FieldWrite for Bool {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        super::io::write_bool(out, self.0);
+        Ok(())
+    }
+}
+
+impl FieldRead<'_> for u8 {
+    fn read_field(input: &mut &[u8]) -> Result<Self> {
+        let bytes: [u8; 1] = super::io::take(input, 1)?.try_into().unwrap();
+        Ok(bytes[0])
+    }
+}
+
+impl FieldWrite for u8 {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        out.push(*self);
+        Ok(())
+    }
+}
+
+impl FieldRead<'_> for bool {
+    fn read_field(input: &mut &[u8]) -> Result<Self> {
+        let bytes: [u8; 1] = super::io::take(input, 1)?.try_into().unwrap();
+        match bytes[0] {
+            0 => Ok(false),
+            1 => Ok(true),
+            other => Err(ProtoError::InvalidBool(other)),
+        }
+    }
+}
+
+impl FieldWrite for bool {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        out.push(u8::from(*self));
+        Ok(())
+    }
+}
+
+impl FieldRead<'_> for f32 {
+    fn read_field(input: &mut &[u8]) -> Result<Self> {
+        super::io::read_f32_be(input)
+    }
+}
+
+impl FieldWrite for f32 {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        super::io::write_f32_be(out, *self);
+        Ok(())
+    }
+}
+
+impl FieldRead<'_> for f64 {
+    fn read_field(input: &mut &[u8]) -> Result<Self> {
+        super::io::read_f64_be(input)
+    }
+}
+
+impl FieldWrite for f64 {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        out.extend_from_slice(&self.to_be_bytes());
+        Ok(())
+    }
+}
+
+/// VarInt-count-prefixed list of items.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LengthCountedVec<T>(pub Vec<T>);
+
+impl<'a, T: FieldRead<'a>> FieldRead<'a> for LengthCountedVec<T> {
+    fn read_field(input: &mut &'a [u8]) -> Result<Self> {
+        let count = read_varint(input)?;
+        if count < 0 {
+            return Err(ProtoError::NegativeLength(count));
+        }
+        let count = count as usize;
+        let mut items = Vec::with_capacity(count);
+        for _ in 0..count {
+            items.push(T::read_field(input)?);
+        }
+        Ok(LengthCountedVec(items))
+    }
+}
+
+/// Read all remaining input as a raw byte slice.
+impl<'a> FieldRead<'a> for &'a [u8] {
+    fn read_field(input: &mut &'a [u8]) -> Result<Self> {
+        let data = *input;
+        *input = &[];
+        Ok(data)
+    }
+}
+
+impl FieldWrite for &[u8] {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        out.extend_from_slice(self);
+        Ok(())
+    }
+}
+
+impl<T: FieldWrite> FieldWrite for LengthCountedVec<T> {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        let count = i32::try_from(self.0.len()).map_err(|_| ProtoError::LengthTooLarge {
+            max: i32::MAX as usize,
+            actual: self.0.len(),
+        })?;
+        write_varint(out, count);
+        for item in &self.0 {
+            item.write_field(out)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> FieldRead<'a> for Uuid {
+    fn read_field(input: &mut &'a [u8]) -> Result<Self> {
+        super::io::read_uuid(input)
+    }
+}
+
+impl FieldWrite for Uuid {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        super::io::write_uuid(out, self);
+        Ok(())
+    }
+}
+
+impl<'a, T: FieldRead<'a>> FieldRead<'a> for Option<T> {
+    fn read_field(input: &mut &'a [u8]) -> Result<Self> {
+        T::read_field(input).map(Some)
+    }
+}
+
+impl<T: FieldWrite> FieldWrite for Option<T> {
+    fn write_field(&self, out: &mut Vec<u8>) -> Result<()> {
+        match self {
+            Some(v) => v.write_field(out),
+            None => Ok(()),
+        }
+    }
+}
 
 /// UUID stored as 16 raw bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

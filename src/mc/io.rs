@@ -23,6 +23,31 @@ pub fn read_u8(input: &mut &[u8]) -> Result<u8> {
 }
 
 #[inline]
+/// Reads one signed `i8`.
+pub fn read_i8(input: &mut &[u8]) -> Result<i8> {
+    Ok(take(input, 1)?[0] as i8)
+}
+
+#[inline]
+/// Writes one signed `i8`.
+pub fn write_i8(out: &mut Vec<u8>, value: i8) {
+    out.push(value as u8);
+}
+
+#[inline]
+/// Reads big-endian `i16`.
+pub fn read_i16_be(input: &mut &[u8]) -> Result<i16> {
+    let bytes: [u8; 2] = take(input, 2)?.try_into().unwrap();
+    Ok(i16::from_be_bytes(bytes))
+}
+
+#[inline]
+/// Writes big-endian `i16`.
+pub fn write_i16_be(out: &mut Vec<u8>, value: i16) {
+    out.extend_from_slice(&value.to_be_bytes());
+}
+
+#[inline]
 /// Reads boolean encoded as `0` or `1`.
 pub fn read_bool(input: &mut &[u8]) -> Result<bool> {
     let value = read_u8(input)?;
@@ -61,10 +86,22 @@ pub fn read_f32_be(input: &mut &[u8]) -> Result<f32> {
 }
 
 #[inline]
+/// Writes big-endian `f32`.
+pub fn write_f32_be(out: &mut Vec<u8>, value: f32) {
+    out.extend_from_slice(&value.to_be_bytes());
+}
+
+#[inline]
 /// Reads big-endian `f64`.
 pub fn read_f64_be(input: &mut &[u8]) -> Result<f64> {
     let bytes: [u8; 8] = take(input, 8)?.try_into().unwrap();
     Ok(f64::from_be_bytes(bytes))
+}
+
+#[inline]
+/// Writes big-endian `i32`.
+pub fn write_i32_be(out: &mut Vec<u8>, value: i32) {
+    out.extend_from_slice(&value.to_be_bytes());
 }
 
 #[inline]

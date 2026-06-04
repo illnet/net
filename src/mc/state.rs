@@ -15,6 +15,28 @@ pub enum HandshakeNextState {
     Login,
 }
 
+impl<'a> super::types::FieldRead<'a> for HandshakeNextState {
+    fn read_field(input: &mut &'a [u8]) -> super::error::Result<Self> {
+        let raw = super::varint::read_varint(input)?;
+        match raw {
+            1 => Ok(HandshakeNextState::Status),
+            2 => Ok(HandshakeNextState::Login),
+            other => Err(super::error::ProtoError::InvalidHandshakeState(other)),
+        }
+    }
+}
+
+impl super::types::FieldWrite for HandshakeNextState {
+    fn write_field(&self, out: &mut Vec<u8>) -> super::error::Result<()> {
+        let raw = match self {
+            HandshakeNextState::Status => 1,
+            HandshakeNextState::Login => 2,
+        };
+        super::varint::write_varint(out, raw);
+        Ok(())
+    }
+}
+
 /// Packet direction label used by stream metadata and hooks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PacketDirection {

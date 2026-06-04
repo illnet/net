@@ -5,7 +5,7 @@ use super::{
         StatusPingC2s,
     },
     state::{HandshakeNextState, PacketState},
-    types::{PacketDecoder, PacketEncode, PacketEncoder, Uuid},
+    types::{BEi64, BEu16, BoundedStr, PacketDecode, PacketDecoder, PacketEncode, PacketEncoder, Uuid, VarInt},
     varint::{read_varint, write_varint},
 };
 
@@ -42,9 +42,9 @@ fn varint_roundtrip() {
 #[test]
 fn handshake_roundtrip() {
     let packet = HandshakeC2s {
-        protocol_version: PROTOCOL_VERSION_WITH_SIG_DATA,
-        server_address: "localhost",
-        server_port: 25565,
+        protocol_version: VarInt(PROTOCOL_VERSION_WITH_SIG_DATA),
+        server_address: BoundedStr("localhost"),
+        server_port: BEu16(25565),
         next_state: HandshakeNextState::Login,
     };
 
@@ -172,7 +172,7 @@ fn login_start_packet_rejects_trailing_bytes() {
 
 #[test]
 fn status_ping_roundtrip() {
-    let packet = StatusPingC2s { payload: 1_234_567 };
+    let packet = StatusPingC2s { payload: BEi64(1_234_567) };
 
     let mut enc = PacketEncoder::new();
     enc.write_packet(&packet).unwrap();
@@ -194,7 +194,7 @@ fn status_ping_roundtrip() {
 #[test]
 fn login_disconnect_roundtrip() {
     let packet = LoginDisconnectS2c {
-        reason: "{\"text\":\"Bye\"}",
+        reason: BoundedStr("{\"text\":\"Bye\"}"),
     };
 
     let mut enc = PacketEncoder::new();
@@ -258,9 +258,9 @@ fn stream_parser_tracks_login_auth_and_compression() {
     };
 
     let handshake = HandshakeC2s {
-        protocol_version: PROTOCOL_VERSION_WITH_UUID,
-        server_address: "example.test",
-        server_port: 25565,
+        protocol_version: VarInt(PROTOCOL_VERSION_WITH_UUID),
+        server_address: BoundedStr("example.test"),
+        server_port: BEu16(25565),
         next_state: HandshakeNextState::Login,
     };
     let mut bytes = Vec::new();
@@ -351,9 +351,9 @@ fn stream_parser_labels_legacy_play_packets() {
     };
 
     let handshake = HandshakeC2s {
-        protocol_version: 758,
-        server_address: "example.test",
-        server_port: 25565,
+        protocol_version: VarInt(758),
+        server_address: BoundedStr("example.test"),
+        server_port: BEu16(25565),
         next_state: HandshakeNextState::Login,
     };
     let mut raw = Vec::new();

@@ -17,6 +17,8 @@ pub enum ProtoError {
     MissingField(&'static str),
     InvalidPacketId { state: PacketState, id: i32 },
     InvalidHandshakeState(i32),
+    NbtExpectedCompound(u8),
+    UnknownTagType(u8),
 }
 
 /// Convenience result alias for protocol encode/decode operations.
